@@ -21,6 +21,8 @@ import { VW_CARS } from "./vw";
 import { HYUNDAI_CARS } from "./hyundai";
 import { CHEVY_CARS } from "./chevy";
 import { NISSAN_CARS } from "./nissan";
+import { VOLVO_CARS } from "./volvo";
+import { KIA_CARS } from "./kia";
 
 export var CARS: Array<Car> = ([] as Array<Car>).concat(
   TOYOTA_CARS,
@@ -33,5 +35,7 @@ export var CARS: Array<Car> = ([] as Array<Car>).concat(
   VW_CARS,
   HYUNDAI_CARS,
   CHEVY_CARS,
-  NISSAN_CARS
+  NISSAN_CARS,
+  VOLVO_CARS,
+  KIA_CARS
 );
