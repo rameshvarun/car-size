@@ -6,6 +6,8 @@ import { Form, Card, Button, Row, Col } from "react-bootstrap";
 import { Car, CARS } from "./cars/";
 import { SideComparision, TopComparision } from "./comparisons";
 
+const queryString = require("query-string");
+
 const MAKES: Set<string> = new Set();
 for (let car of CARS) {
   MAKES.add(car.make);
@@ -40,20 +42,78 @@ function getCar(make: string, model: string, year: number): Car {
   throw new Error(`Couldn't find a car.`);
 }
 
+const MANUAL_ENTRY = "Manual Entry";
+
 class CarSelectionCard extends React.Component<
   {
     onSelect: (car: Car | null) => void;
     onRemove: () => void;
     onHoverStart: () => void;
     onHoverEnd: () => void;
+    serialized?: string;
   },
-  { make: string | null; model: string | null; year: number | null }
+  {
+    make: string | null;
+    model: string | null;
+    year: number | null;
+    manual: { length?: number; width?: number; height?: number };
+  }
 > {
   constructor(props) {
     super(props);
-    this.state = { make: null, model: null, year: null };
+
+    if (this.props.serialized) {
+      let parts = this.props.serialized.split(":");
+      if (parts[0] === "Manual") {
+        let length = Number(parts[1]);
+        let width = Number(parts[2]);
+        let height = Number(parts[3]);
+
+        this.state = {
+          make: MANUAL_ENTRY,
+          model: null,
+          year: null,
+          manual: {
+            length,
+            width,
+            height
+          }
+        };
+
+        let car = {
+          make: MANUAL_ENTRY,
+          model: MANUAL_ENTRY,
+          year: 0,
+
+          length,
+          width,
+          height
+        };
+        this.props.onSelect(car);
+      } else {
+        let make = parts[0];
+        let model = parts[1];
+        let year = Number(parts[2]);
+        this.state = { make, model, year, manual: {} };
+
+        let car = getCar(make, model, year);
+        this.props.onSelect(car);
+      }
+    } else {
+      this.state = { make: null, model: null, year: null, manual: {} };
+    }
   }
   render() {
+    let carSize = <></>;
+    if (this.state.make && this.state.model && this.state.year) {
+      let car = getCar(this.state.make, this.state.model, this.state.year);
+      carSize = (
+        <Form.Group>
+          <span>{car.length}″ L</span> x <span>{car.width}″ W</span> x{" "}
+          <span>{car.height}″ H</span>
+        </Form.Group>
+      );
+    }
     return (
       <Card
         onMouseEnter={() => this.props.onHoverStart()}
@@ -66,8 +126,10 @@ class CarSelectionCard extends React.Component<
               <Form.Control
                 onChange={e => this.setMake(e.target.value)}
                 as="select"
+                value={this.state.make}
               >
                 <option disabled selected></option>
+                <option value={MANUAL_ENTRY}>{MANUAL_ENTRY}</option>
                 {Array.from(MAKES.values()).map(make => (
                   <option key={make} value={make}>
                     {make}
@@ -76,40 +138,114 @@ class CarSelectionCard extends React.Component<
               </Form.Control>
             </Form.Group>
 
-            <Form.Group key="model-selection">
-              <Form.Label>Model</Form.Label>
-              <Form.Control
-                key={this.state.make}
-                onChange={e => this.setModel(e.target.value)}
-                as="select"
-              >
-                <option disabled selected></option>
-                {this.state.make &&
-                  Array.from(getModels(this.state.make).values()).map(model => (
-                    <option key={model} value={model}>
-                      {model}
-                    </option>
-                  ))}
-              </Form.Control>
-            </Form.Group>
+            {this.state.make === MANUAL_ENTRY && (
+              <>
+                <Form.Group key="car-length">
+                  <Form.Label>Length (in.)</Form.Label>
+                  <Form.Control
+                    value={this.state.manual.length}
+                    onChange={e => {
+                      let value = e.target.value;
+                      this.setState(
+                        state => ({
+                          manual: {
+                            ...this.state.manual,
+                            length: value
+                          }
+                        }),
+                        () => this.trySelectManual()
+                      );
+                    }}
+                    type="number"
+                  />
+                </Form.Group>
 
-            <Form.Group key="year-selection">
-              <Form.Label>Year</Form.Label>
-              <Form.Control
-                key={this.state.model}
-                onChange={e => this.setYear(e.target.value)}
-                as="select"
-              >
-                <option disabled selected></option>
-                {this.state.make &&
-                  this.state.model &&
-                  getYears(this.state.make, this.state.model).map(year => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
-              </Form.Control>
-            </Form.Group>
+                <Form.Group key="car-width">
+                  <Form.Label>Width (in.)</Form.Label>
+                  <Form.Control
+                    value={this.state.manual.width}
+                    onChange={e => {
+                      let value = e.target.value;
+                      this.setState(
+                        state => ({
+                          manual: {
+                            ...this.state.manual,
+                            width: value
+                          }
+                        }),
+                        () => this.trySelectManual()
+                      );
+                    }}
+                    type="number"
+                  />
+                </Form.Group>
+
+                <Form.Group key="car-height">
+                  <Form.Label>Height (in.)</Form.Label>
+                  <Form.Control
+                    value={this.state.manual.height}
+                    onChange={e => {
+                      let value = e.target.value;
+                      this.setState(
+                        state => ({
+                          manual: {
+                            ...this.state.manual,
+                            height: value
+                          }
+                        }),
+                        () => this.trySelectManual()
+                      );
+                    }}
+                    type="number"
+                  />
+                </Form.Group>
+              </>
+            )}
+
+            {this.state.make !== MANUAL_ENTRY && (
+              <>
+                <Form.Group key="model-selection">
+                  <Form.Label>Model</Form.Label>
+                  <Form.Control
+                    key={this.state.make}
+                    onChange={e => this.setModel(e.target.value)}
+                    as="select"
+                    value={this.state.model}
+                  >
+                    <option disabled selected></option>
+                    {this.state.make &&
+                      Array.from(getModels(this.state.make).values()).map(
+                        model => (
+                          <option key={model} value={model}>
+                            {model}
+                          </option>
+                        )
+                      )}
+                  </Form.Control>
+                </Form.Group>
+
+                <Form.Group key="year-selection">
+                  <Form.Label>Year</Form.Label>
+                  <Form.Control
+                    key={this.state.model}
+                    onChange={e => this.setYear(e.target.value)}
+                    as="select"
+                    value={this.state.year}
+                  >
+                    <option disabled selected></option>
+                    {this.state.make &&
+                      this.state.model &&
+                      getYears(this.state.make, this.state.model).map(year => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      ))}
+                  </Form.Control>
+                </Form.Group>
+
+                {carSize}
+              </>
+            )}
           </Form>
           <Button
             variant="outline-danger"
@@ -120,6 +256,25 @@ class CarSelectionCard extends React.Component<
         </Card.Body>
       </Card>
     );
+  }
+
+  trySelectManual() {
+    console.log(this.state);
+    if (
+      this.state.manual.length &&
+      this.state.manual.width &&
+      this.state.manual.height
+    ) {
+      this.props.onSelect({
+        make: MANUAL_ENTRY,
+        model: MANUAL_ENTRY,
+        year: 0,
+
+        length: this.state.manual.length,
+        width: this.state.manual.width,
+        height: this.state.manual.height
+      });
+    }
   }
 
   setMake(make: string) {
@@ -138,7 +293,7 @@ class CarSelectionCard extends React.Component<
   }
 }
 
-type CardState = { id: number; car: Car | null };
+type CardState = { id: number; car: Car | null; serialized?: string };
 type CarSelectionState = { cards: Array<CardState> };
 
 function removeNulls<T>(array: Array<T | null>): Array<T> {
@@ -155,7 +310,20 @@ class CarSelection extends React.Component<
 > {
   constructor(props) {
     super(props);
-    this.state = { cards: [{ id: 0, car: null }] };
+
+    const data = queryString.parse(window.location.hash);
+    if (data.cars) {
+      let cars = data.cars;
+      if (!(cars instanceof Array)) cars = [cars];
+      let cards = cars.map((car, i) => ({
+        id: i,
+        car: null,
+        serialized: car
+      }));
+      this.state = { cards: cards };
+    } else {
+      this.state = { cards: [{ id: 0, car: null }] };
+    }
   }
   render() {
     return (
@@ -170,6 +338,7 @@ class CarSelection extends React.Component<
               style={{ paddingBottom: "15px" }}
             >
               <CarSelectionCard
+                serialized={card.serialized}
                 onHoverStart={() => this.props.onSelectionChanged(card.car)}
                 onHoverEnd={() => this.props.onSelectionChanged(null)}
                 onSelect={car => this.setCar(card, car)}
@@ -247,12 +416,24 @@ class App extends React.Component<
     super(props);
     this.state = { cars: [], selection: null };
   }
+  updateHash() {
+    let cars = this.state.cars.map(car => {
+      if (car.make === "Manual Entry") {
+        return `Manual:${car.length}:${car.width}:${car.height}`;
+      } else {
+        return `${car.make}:${car.model}:${car.year}`;
+      }
+    });
+    window.location.hash = queryString.stringify({ cars: cars });
+  }
   render() {
     return (
       <>
         <CarSelection
           onSelectionChanged={selection => this.setState({ selection })}
-          onCarsChanged={cars => this.setState({ cars })}
+          onCarsChanged={cars => {
+            this.setState({ cars }, () => this.updateHash());
+          }}
         />
         <Row>
           <Col md={6}>
