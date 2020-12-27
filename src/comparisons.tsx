@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Car } from "./cars/";
+import { Car } from "./cars";
 
 export class TopComparision extends React.Component<
   { selection: Car | null; cars: Array<Car> },

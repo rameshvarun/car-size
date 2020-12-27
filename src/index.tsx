@@ -3,44 +3,21 @@ import * as ReactDOM from "react-dom";
 
 import { Form, Card, Button, Row, Col } from "react-bootstrap";
 
-import { Car, CARS } from "./cars/";
 import { SideComparision, TopComparision } from "./comparisons";
+
+import * as cars from "./cars";
+import { Car } from "./cars";
 
 const queryString = require("query-string");
 
-const MAKES: Set<string> = new Set();
-for (let car of CARS) {
-  MAKES.add(car.make);
-}
-
-function getModels(make: string): Set<string> {
-  let models: Set<string> = new Set();
-  for (let car of CARS) {
-    if (car.make === make) {
-      models.add(car.model);
-    }
-  }
-  return models;
-}
-
-function getYears(make: string, model: string): Array<number> {
-  let years: Set<number> = new Set();
-  for (let car of CARS) {
-    if (car.make === make && car.model == model) {
-      years.add(car.year);
-    }
-  }
-  return Array.from(years.values()).sort();
-}
-
-function getCar(make: string, model: string, year: number): Car {
-  for (let car of CARS) {
-    if (car.make === make && car.model == model && car.year == year) {
-      return car;
-    }
-  }
-  throw new Error(`Couldn't find a car.`);
-}
+// function getCar(make: string, model: string, year: number): Car {
+//   for (let car of CARS) {
+//     if (car.make === make && car.model == model && car.year == year) {
+//       return car;
+//     }
+//   }
+//   throw new Error(`Couldn't find a car.`);
+// }
 
 const MANUAL_ENTRY = "Manual Entry";
 
@@ -56,6 +33,8 @@ class CarSelectionCard extends React.Component<
     make: string | null;
     model: string | null;
     year: number | null;
+    trim: string | null;
+
     manual: { length?: number; width?: number; height?: number };
   }
 > {
@@ -64,7 +43,7 @@ class CarSelectionCard extends React.Component<
 
     if (this.props.serialized) {
       let parts = this.props.serialized.split(":");
-      if (parts[0] === "Manual") {
+      if (parts[0] === MANUAL_ENTRY) {
         let length = Number(parts[1]);
         let width = Number(parts[2]);
         let height = Number(parts[3]);
@@ -73,6 +52,7 @@ class CarSelectionCard extends React.Component<
           make: MANUAL_ENTRY,
           model: null,
           year: null,
+          trim: null,
           manual: {
             length,
             width,
@@ -84,6 +64,7 @@ class CarSelectionCard extends React.Component<
           make: MANUAL_ENTRY,
           model: MANUAL_ENTRY,
           year: 0,
+          trim: MANUAL_ENTRY,
 
           length,
           width,
@@ -94,19 +75,37 @@ class CarSelectionCard extends React.Component<
         let make = parts[0];
         let model = parts[1];
         let year = Number(parts[2]);
-        this.state = { make, model, year, manual: {} };
+        let trim = parts[3];
 
-        let car = getCar(make, model, year);
+        this.state = { make, model, year, trim, manual: {} };
+
+        let car = cars.getCar(make, model, year, trim);
         this.props.onSelect(car);
       }
     } else {
-      this.state = { make: null, model: null, year: null, manual: {} };
+      this.state = {
+        make: null,
+        model: null,
+        year: null,
+        trim: null,
+        manual: {}
+      };
     }
   }
   render() {
     let carSize = <></>;
-    if (this.state.make && this.state.model && this.state.year) {
-      let car = getCar(this.state.make, this.state.model, this.state.year);
+    if (
+      this.state.make &&
+      this.state.model &&
+      this.state.year &&
+      this.state.trim
+    ) {
+      let car = cars.getCar(
+        this.state.make,
+        this.state.model,
+        this.state.year,
+        this.state.trim
+      );
       carSize = (
         <Form.Group>
           <span>{car.length}″ L</span> x <span>{car.width}″ W</span> x{" "}
@@ -130,7 +129,7 @@ class CarSelectionCard extends React.Component<
               >
                 <option disabled selected></option>
                 <option value={MANUAL_ENTRY}>{MANUAL_ENTRY}</option>
-                {Array.from(MAKES.values()).map(make => (
+                {Array.from(cars.getMakes().values()).map(make => (
                   <option key={make} value={make}>
                     {make}
                   </option>
@@ -214,7 +213,7 @@ class CarSelectionCard extends React.Component<
                   >
                     <option disabled selected></option>
                     {this.state.make &&
-                      Array.from(getModels(this.state.make).values()).map(
+                      Array.from(cars.getModels(this.state.make).values()).map(
                         model => (
                           <option key={model} value={model}>
                             {model}
@@ -235,9 +234,39 @@ class CarSelectionCard extends React.Component<
                     <option disabled selected></option>
                     {this.state.make &&
                       this.state.model &&
-                      getYears(this.state.make, this.state.model).map(year => (
-                        <option key={year} value={year}>
-                          {year}
+                      cars
+                        .getYears(this.state.make, this.state.model)
+                        .map(year => (
+                          <option key={year} value={year}>
+                            {year}
+                          </option>
+                        ))}
+                  </Form.Control>
+                </Form.Group>
+
+                <Form.Group key="trim-selection">
+                  <Form.Label>Trim</Form.Label>
+                  <Form.Control
+                    key={this.state.year}
+                    onChange={e => this.setTrim(e.target.value)}
+                    as="select"
+                    value={this.state.trim}
+                  >
+                    <option disabled selected></option>
+                    {this.state.make &&
+                      this.state.model &&
+                      this.state.year &&
+                      Array.from(
+                        cars
+                          .getTrims(
+                            this.state.make,
+                            this.state.model,
+                            this.state.year
+                          )
+                          .values()
+                      ).map(trim => (
+                        <option key={trim} value={trim}>
+                          {trim}
                         </option>
                       ))}
                   </Form.Control>
@@ -269,6 +298,7 @@ class CarSelectionCard extends React.Component<
         make: MANUAL_ENTRY,
         model: MANUAL_ENTRY,
         year: 0,
+        trim: MANUAL_ENTRY,
 
         length: this.state.manual.length,
         width: this.state.manual.width,
@@ -278,18 +308,36 @@ class CarSelectionCard extends React.Component<
   }
 
   setMake(make: string) {
-    this.setState(state => ({ ...state, make: make, model: null, year: null }));
+    this.setState(state => ({
+      ...state,
+      make: make,
+      model: null,
+      year: null,
+      trim: null
+    }));
     this.props.onSelect(null);
   }
 
   setModel(model: string) {
-    this.setState(state => ({ ...state, model: model, year: null }));
+    this.setState(state => ({
+      ...state,
+      model: model,
+      year: null,
+      trim: null
+    }));
     this.props.onSelect(null);
   }
 
   setYear(year: number) {
-    this.setState(state => ({ ...state, year: year }));
-    this.props.onSelect(getCar(this.state.make!, this.state.model!, year));
+    this.setState(state => ({ ...state, year: year, trim: null }));
+    this.props.onSelect(null);
+  }
+
+  setTrim(trim: string) {
+    this.setState(state => ({ ...state, trim: trim }));
+    this.props.onSelect(
+      cars.getCar(this.state.make!, this.state.model!, this.state.year!, trim)
+    );
   }
 }
 
@@ -418,10 +466,10 @@ class App extends React.Component<
   }
   updateHash() {
     let cars = this.state.cars.map(car => {
-      if (car.make === "Manual Entry") {
-        return `Manual:${car.length}:${car.width}:${car.height}`;
+      if (car.make === MANUAL_ENTRY) {
+        return `${MANUAL_ENTRY}:${car.length}:${car.width}:${car.height}`;
       } else {
-        return `${car.make}:${car.model}:${car.year}`;
+        return `${car.make}:${car.model}:${car.year}:${car.trim}`;
       }
     });
     window.location.hash = queryString.stringify({ cars: cars });
@@ -456,4 +504,6 @@ class App extends React.Component<
   }
 }
 
-ReactDOM.render(<App />, document.getElementById("root"));
+cars.init().then(() => {
+  ReactDOM.render(<App />, document.getElementById("root"));
+});

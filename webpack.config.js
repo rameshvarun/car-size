@@ -12,8 +12,9 @@ const common = {
         exclude: /node_modules/
       },
       {
-        test: /\.(png|svg|jpg|gif)$/,
-        use: ["file-loader"]
+        test: /\.(png|svg|jpg|gif|json)$/,
+        use: ["file-loader"],
+        type: 'javascript/auto'
       }
     ]
   },
