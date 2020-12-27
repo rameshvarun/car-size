@@ -28,55 +28,64 @@ export class CarSelectionCard extends React.Component<
   constructor(props) {
     super(props);
 
-    if (this.props.serialized) {
-      let parts = this.props.serialized.split(":");
-      if (parts[0] === MANUAL_ENTRY) {
-        let length = Number(parts[1]);
-        let width = Number(parts[2]);
-        let height = Number(parts[3]);
+    let defaultState = {
+      make: null,
+      model: null,
+      year: null,
+      trim: null,
+      manual: {}
+    };
 
-        this.state = {
-          make: MANUAL_ENTRY,
-          model: null,
-          year: null,
-          trim: null,
-          manual: {
+    // Try to load options from serialized state.
+    try {
+      if (this.props.serialized) {
+        let parts = this.props.serialized.split(":");
+        if (parts[0] === MANUAL_ENTRY) {
+          // Load in a manual entry car.
+          let length = Number(parts[1]);
+          let width = Number(parts[2]);
+          let height = Number(parts[3]);
+
+          this.state = {
+            make: MANUAL_ENTRY,
+            model: null,
+            year: null,
+            trim: null,
+            manual: {
+              length,
+              width,
+              height
+            }
+          };
+
+          let car = {
+            make: MANUAL_ENTRY,
+            model: MANUAL_ENTRY,
+            year: 0,
+            trim: MANUAL_ENTRY,
+
             length,
             width,
             height
-          }
-        };
+          };
+          this.props.onSelect(car);
+        } else {
+          // Load in a car model.
+          let make = parts[0];
+          let model = parts[1];
+          let year = Number(parts[2]);
+          let trim = parts[3];
 
-        let car = {
-          make: MANUAL_ENTRY,
-          model: MANUAL_ENTRY,
-          year: 0,
-          trim: MANUAL_ENTRY,
+          this.state = { make, model, year, trim, manual: {} };
 
-          length,
-          width,
-          height
-        };
-        this.props.onSelect(car);
+          let car = cars.getCar(make, model, year, trim);
+          this.props.onSelect(car);
+        }
       } else {
-        let make = parts[0];
-        let model = parts[1];
-        let year = Number(parts[2]);
-        let trim = parts[3];
-
-        this.state = { make, model, year, trim, manual: {} };
-
-        let car = cars.getCar(make, model, year, trim);
-        this.props.onSelect(car);
+        this.state = defaultState;
       }
-    } else {
-      this.state = {
-        make: null,
-        model: null,
-        year: null,
-        trim: null,
-        manual: {}
-      };
+    } catch {
+      this.state = defaultState;
     }
   }
   render() {
@@ -346,18 +355,25 @@ export class CarSelection extends React.Component<
   constructor(props) {
     super(props);
 
-    const data = queryString.parse(window.location.hash);
-    if (data.cars) {
-      let cars = data.cars;
-      if (!(cars instanceof Array)) cars = [cars];
-      let cards = cars.map((car, i) => ({
-        id: this.generateID(),
-        car: null,
-        serialized: car
-      }));
-      this.state = { cards: cards };
-    } else {
-      this.state = { cards: [{ id: this.generateID(), car: null }] };
+    let defaultState = { cards: [{ id: this.generateID(), car: null }] };
+
+    try {
+      // Try to load cards from the hash.
+      const data = queryString.parse(window.location.hash);
+      if (data.cars) {
+        let cars = data.cars;
+        if (!(cars instanceof Array)) cars = [cars];
+        let cards = cars.map(car => ({
+          id: this.generateID(),
+          car: null,
+          serialized: car
+        }));
+        this.state = { cards: cards };
+      } else {
+        this.state = defaultState;
+      }
+    } catch {
+      this.state = defaultState;
     }
   }
   render() {
