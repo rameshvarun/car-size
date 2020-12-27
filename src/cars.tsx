@@ -57,3 +57,5 @@ export function getCar(
     height: dimensions[2]
   };
 }
+
+export const MANUAL_ENTRY = "Manual Entry";

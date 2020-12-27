@@ -30,7 +30,7 @@ export class TopComparision extends React.Component<
           {this.props.cars.map(car => {
             let opacity =
               this.props.selection === car ? 1.0 : 1 / this.props.cars.length;
-            let key = `${car.make}-${car.model}-${car.year}`;
+            let key = `${car.make}-${car.model}-${car.year}-${car.trim}`;
             return (
               <rect
                 key={key}
@@ -72,7 +72,7 @@ export class SideComparision extends React.Component<
               this.props.selection === car ? 1.0 : 1 / this.props.cars.length;
             let x = maxLength - car.length;
             let y = maxHeight - car.height;
-            let key = `${car.make}-${car.model}-${car.year}`;
+            let key = `${car.make}-${car.model}-${car.year}-${car.trim}`;
             if (car.sideview) {
               return (
                 <image
